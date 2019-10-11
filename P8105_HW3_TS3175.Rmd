@@ -1,0 +1,81 @@
+---
+title: "P8105_hw3_TS3175"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(leaflet)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+```
+## Load instacart data
+```{r}
+library(p8105.datasets)
+data("instacart")
+```
+## Getting info from instacart
+```{r}
+  instacart %>%
+  count(aisle) %>% 
+  arrange(desc(n))
+```
+### There are 134 aisles and Fresh Vegetables and Fresh Fruits are the most ordered from.
+## Make a plot
+```{r}
+instacart %>%
+  count(aisle) %>% 
+  filter(
+   n > 10000
+   ) %>% 
+  ggplot(aes(y = n, x=reorder(aisle,n))) +
+  geom_bar (stat = "identity")+ coord_flip()+ 
+  labs(
+    title="Number of Aisle Orders",
+    y="Number of Orders > 10,000",
+    x="Name of Aisle"
+  )
+```
+## Making Tables
+```{r}
+instacart %>%
+  filter(aisle== c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by (aisle, product_name) %>% 
+  summarize(n=n()) %>% 
+  filter(min_rank(desc(n)) <4) %>%
+  knitr::kable(col.names = c("Aisle Name",
+                           "Product Name",
+                           "Number of Products"))
+```
+
+```{r}
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apple", "Coffee Ice Cream")) %>% 
+  group_by(product_name, order_dow) %>%
+  summarise(mean = mean(order_hour_of_day)) %>% 
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean)%>% 
+    knitr::kable(col.names = c("Product Names",
+                           "Sunday",
+                           "Monday",
+                           "Tuesday",
+                           "Wednesday",
+                           "Thursday",
+                           "Friday",
+                           "Saturday"))
+```
+
+
+
+
+
+

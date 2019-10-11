@@ -1,6 +1,6 @@
 ---
 title: "P8105_hw3_TS3175"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}

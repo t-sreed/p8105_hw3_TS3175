@@ -1,13 +1,14 @@
 ---
 title: "P8105_hw3_TS3175"
+author: "Tanu"
 output: github_document
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(viridis)
 library(leaflet)
+library(gridExtra)
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -17,19 +18,38 @@ knitr::opts_chunk$set(
 )
 
 ```
-## Load instacart data
+# Problem 1
+Load instacart data
 ```{r}
 library(p8105.datasets)
 data("instacart")
 ```
-## Getting info from instacart
-```{r}
-  instacart %>%
-  count(aisle) %>% 
-  arrange(desc(n))
-```
-### There are 134 aisles and Fresh Vegetables and Fresh Fruits are the most ordered from.
-## Make a plot
+## A Short Description of My Dataset
+“The Instacart Online Grocery Shopping Dataset 2017” is an anonymized dataset with over 3 million online grocery orders from more than 200,000 Instacart users. There are `r nrow(instacart)` observations and `r ncol(instacart)` variables. The key variables are as follows:
+  order_id: order identifier
+  product_id: product identifier
+  add_to_cart_order: order in which each product was added to cart
+  reordered: 1 if this prodcut has been ordered by this user in the past, 0 otherwise
+  user_id: customer identifier
+  eval_set: which evaluation set this order belongs in (Note that the data for use in this class is exclusively from the “train”   eval_set)
+  order_number: the order sequence number for this user (1=first, n=nth)
+  order_dow: the day of the week on which the order was placed
+  order_hour_of_day: the hour of the day on which the order was placed
+  days_since_prior_order: days since the last order, capped at 30, NA if order_number=1
+  product_name: name of the product
+  aisle_id: aisle identifier
+  department_id: department identifier
+  aisle: the name of the aisle
+  department: the name of the department
+  
+Illustrative examples:
+* The first observation shows that user with user ID 112108 ordered Bulgarian Yogurt with the product ID 49302 from aisle 120 of the dairy eggs department.
+* The second observation shows that user with user ID 112108 ordered Organic 4% Milk Fat Whole Milk Cottage Cheese with the product ID 11109 from aisle 108 of the dairy eggs department. 
+
+There are 134 aisles and Fresh Vegetables and Fresh Fruits are the most ordered from.
+
+
+## The plot below that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered.
 ```{r}
 instacart %>%
   count(aisle) %>% 
@@ -44,7 +64,8 @@ instacart %>%
     x="Name of Aisle"
   )
 ```
-## Making Tables
+
+## The table below shows the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”, including the number of times each item is ordered.
 ```{r}
 instacart %>%
   filter(aisle== c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
@@ -56,6 +77,8 @@ instacart %>%
                            "Number of Products"))
 ```
 
+
+## The table below shows the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week.
 ```{r}
 instacart %>%
   filter(product_name %in% c("Pink Lady Apple", "Coffee Ice Cream")) %>% 
@@ -74,8 +97,119 @@ instacart %>%
                            "Saturday"))
 ```
 
+# Problem 2
+## Load in BRFSS data
+```{r}
+library(p8105.datasets)
+data("brfss_smart2010")
+```
 
+## Cleaned the BRFSS data to focus on the “Overall Health” topic, include only responses from “Excellent” to “Poor”, and organized responses as a factor taking levels ordered from “Poor” to “Excellent
+```{r}
+brfss2 = brfss_smart2010 %>% 
+  filter(Topic %in% "Overall Health") %>% 
+  filter(Response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>%
+  mutate(
+    Response = ordered(Response, c("Poor", "Fair", "Good", "Very good", "Excellent")))
+```
 
+```{r}
+brfss2 %>% 
+  filter(Year == "2002") %>% 
+  group_by (Year, Locationabbr) %>% 
+  summarise(n=n()) %>% 
+  filter(n>6) %>% 
+  knitr::kable(col.names= c("Year", "State", "Number of Observations at 7 or more locations"))
+```
+In 2002, the 36 which states above were observed at 7 or more locations.
 
+```{r}
+brfss2 %>% 
+  filter(Year == "2010") %>% 
+  group_by (Year, Locationabbr) %>% 
+  summarise(n=n()) %>% 
+  filter(n>6) %>% 
+  knitr::kable(col.names= c("Year", "State", "Number of Observations at 7 or more locations"))
+```
+In 2010, the 45 which states above were observed at 7 or more locations.
 
+## Constructed a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state.
+```{r}
+brfss=
+brfss2%>% 
+      filter(Response == "Excellent") %>% 
+      group_by(Year, Locationabbr) %>% 
+      summarise(mean_value=mean(Data_value))
+```
 
+## The plot below shows the average values (from the step before) over time within a state.
+```{r}
+brfss %>% 
+ggplot(aes(x=Year, y=mean_value)) + geom_line(aes(group=Locationabbr, color=Locationabbr))
+```
+
+## The two-panel plot below shows, for the years 2006, and 2010, the distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+```{r}
+brfss_smart2010 %>% 
+  filter(Year %in% c("2006", "2010"), Locationabbr == "NY") %>% 
+  filter(Response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+   mutate(
+    Response = ordered(Response, c("Poor", "Fair", "Good", "Very good", "Excellent"))) %>% 
+  
+  ggplot(aes(x=Response, y=Data_value)) + geom_violin(aes(color=Response))+stat_summary(fun.y = median, geom = "point", color = "blue") + 
+facet_grid(~Year) +
+  labs(
+    title="Distribution of Data Values for Responses Poor to Excellent in NY State for 2006 and 2010",
+    y="Data Value",
+    x="Response"
+  ) 
+```
+
+# Problem 3
+## Loaded, tidied, and otherwise wrangled the data to create a dataset including all originally observed variables and values, with a new variable "Day_of_Week" coded as weekday vs weekend. 
+```{r}
+accel_data = read_csv(file = "./Data/accel_data.csv") %>% 
+janitor::clean_names() %>% 
+mutate(
+  Day_of_Week = if_else(day %in% c("Saturday","Sunday"), "Weekend", "Weekday")
+) %>% 
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "Minute",
+    names_prefix = "activity_",
+    values_to = "Activity") %>%
+  mutate( week= as.integer(week),
+          day_id= as.integer(day_id),
+          day= as.character(day),
+          Day_of_Week=as.character(Day_of_Week),
+          Activity=as.numeric(Activity),
+          Minute=as.numeric(Minute)
+  )
+```
+There are `r nrow(accel_data)` observations and `r ncol(accel_data)` variables. It contains the following variables: `r colnames(accel_data)`.
+
+## The table below shows total activities during the day for each day.
+```{r}
+accel_data %>% 
+  group_by(week, day) %>% 
+  summarise (total_activity = sum(Activity)) %>%
+  knitr::kable(col.names= c("Week", "Day of the Week", "Total Activities"))
+```
+There are 5 total weeks to look at and all 7 days in the data set. The trend is hard to see with this table, but it looks as though the least activities happened on Saturdays.  
+
+## The single-panel plot below shows the 24-hour activity time courses for each day and uses color to indicate day of the week.
+```{r}
+accel_data %>%
+  mutate(
+    hour = Minute %/% 60 
+    ) %>% 
+  group_by(day, hour) %>% 
+  summarise (total_activity = sum(Activity)) %>% 
+  ggplot(aes(x=hour, y=total_activity)) + geom_line(aes(color=day)) + 
+  labs(
+    title="24-hour Activity Time Courses by Day",
+    y="Total Activity",
+    x="Hour of the Day"
+  ) 
+```
+Based on this graph, we can see that activity is at its highest oon Friday during hour 20 of the day, or 10pm, followed by Sunday at hour 10, or 10am. We can also see a general trend that this person begins being active at about 5 am and is steadily active until about 10pm. This graph also suggests that this person probably sleeps around 11pm or 12am as the lines on the graph decrease and the person wakes up around 4:45am or 6am most days. There is also a clear trend that Saturday is this person's least active day.
